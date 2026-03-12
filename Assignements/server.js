@@ -1,38 +1,58 @@
-// create http server
+//create express app
 import exp from 'express'
+import cookieParser from 'cookie-parser'
+import {connect} from 'mongoose'
+import {userapp} from "./APIs/userAPI.js"
+import {config} from 'dotenv'
+config(); //process.env.PORT,process.env.DB_URL
 const app=exp()
-import {userapp} from './APIs/userAPI.js'
-import {productapp} from './APIs/productAPI.js'
+// start server
+const port=process.env.PORT || 8074
+app.listen(8074,()=>console.log("server on port 8074.."))
 
-//use body parser middleware  (in-built)
-app.use(exp.json())
-
-// create custom middleware
-function middleware1(req,res,next){
-    //send res from middleware
-    //res.json{message:"this is middleware1"}
-    //farward req to next
-    console.log("middleware 1 executed")
-    next();
-}
-function middleware2(req,res,next){
-    //send res from middleware
-    //res.json{message:"this is middleware1"}
-    //farward req to next
-    console.log("middleware 2 executed")
-    next();
-}
-app.use(middleware1)
-app.use(middleware2)
 
 // farward req to userapi if path starts with /user-api
-app.use('/user-api',userapp)
+app.use(exp.json())
+app.use(cookieParser())
+app.use("/user-api",userapp)
+//connect to db server
+async function connectdb(){
+    try{
+        await connect(process.env.DB_URL);
+        console.log("db connection success")
+    } catch (err){
+        console.log("err in db connection:",err);
+    }
+}
+connectdb()
 
-// farward req to userapi if path starts with /product-api
-app.use('/product-api',productapp)
-//set port number
-const port=8074
+//error handling middleware
+app.use((err,req,res,next)=>{
+  //  res.json({message:"error occured",error:err.message})
+  if(err.name=="ValidationError"){
+    return res.status(400).json({message:"error occured",error:err.message})
+  }
+  //cast error
+  if(err.name=="CastError"){
+    return res.status(400).json({message:"error occured",error:err.message})
+  }
+  //send server side error
+  res.status(500).json({message:"error occured",error:"server side error"})
+})
 
-//to assign port number to http server
-app.listen(port,()=>console.log(`server listening po port ${port}...`))
 
+
+
+//  async function getdata(){
+// try{
+//     let res=await fetch("jdfsgbdshgkjdshfkjdsd")
+//     let data = await res.json()
+//     console.log(data) 
+//} catch(err){
+// console.log(err)
+// }
+// getdata()
+
+// for product 
+import { productapp } from './APIs/productAPI.js'
+app.use("/product-api",productapp)
